@@ -155,6 +155,9 @@ enum AuthenticationTokenJson {
     User {
         value: String,
     },
+    PlaintextUser {
+        value: String,
+    },
     None,
 }
 
@@ -278,6 +281,13 @@ impl TryFrom<ClientMessage> for JsonValue {
             },
             ClientMessage::Authenticate {
                 base_version,
+                token: AuthenticationToken::PlaintextUser(value),
+            } => ClientMessageJson::Authenticate {
+                base_version,
+                token: AuthenticationTokenJson::PlaintextUser { value },
+            },
+            ClientMessage::Authenticate {
+                base_version,
                 token: AuthenticationToken::None,
             } => ClientMessageJson::Authenticate {
                 base_version,
@@ -366,6 +376,9 @@ impl TryFrom<JsonValue> for ClientMessage {
                         )
                     },
                     AuthenticationTokenJson::User { value } => AuthenticationToken::User(value),
+                    AuthenticationTokenJson::PlaintextUser { value } => {
+                        AuthenticationToken::PlaintextUser(value)
+                    },
                     AuthenticationTokenJson::None => AuthenticationToken::None,
                 },
             },

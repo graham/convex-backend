@@ -185,6 +185,12 @@ export type Authenticate =
     }
   | {
       type: "Authenticate";
+      tokenType: "PlaintextUser";
+      value: string;
+      baseVersion: IdentityVersion;
+    }
+  | {
+      type: "Authenticate";
       tokenType: "None";
       baseVersion: IdentityVersion;
     };
