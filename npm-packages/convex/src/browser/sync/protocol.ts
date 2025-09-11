@@ -121,6 +121,7 @@ type Connect = {
   connectionCount: number;
   lastCloseReason: string | null;
   maxObservedTimestamp?: TS;
+  clientTs: number;
 };
 
 export type AddQuery = {
@@ -260,6 +261,8 @@ export type Transition = {
   startVersion: StateVersion;
   endVersion: StateVersion;
   modifications: StateModification[];
+  clientClockSkew?: number;
+  serverTs?: number;
 };
 
 type MutationSuccess = {

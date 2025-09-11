@@ -14,8 +14,7 @@ import udfs from "@common/udfs";
 import classNames from "classnames";
 import {
   Filter,
-  FilterByIndex,
-  FilterByIndexRange,
+  FilterExpression,
   SchemaJson,
 } from "system-udfs/convex/_system/frontend/lib/filters";
 import { Shape } from "shapes";
@@ -52,10 +51,10 @@ import {
 import { cn } from "@ui/cn";
 
 import { getDefaultIndex } from "@common/features/data/components/DataFilters/IndexFilters";
-import { useMount } from "react-use";
 import { api } from "system-udfs/convex/_generated/api";
 import { useNents } from "@common/lib/useNents";
 import omit from "lodash/omit";
+import { clearFilters } from "./DataFilters/clearFilters";
 
 export function DataContent({
   tableName,
@@ -210,6 +209,28 @@ export function DataContent({
         | undefined
     )?.[0] || "_creationTime";
 
+  const { captureMessage } = useContext(DeploymentInfoContext);
+  useEffect(() => {
+    if (
+      status !== "LoadingFirstPage" &&
+      !(data.length || status === "CanLoadMore") &&
+      !hasFiltersAndAtLeastOneDocument &&
+      !isLoading
+    ) {
+      captureMessage(
+        `Encountered unexpected state in data page: status: ${status}, numRowsInTable: ${numRowsInTable}, numRowsRead: ${numRowsRead}, isLoading: ${isLoading}`,
+      );
+    }
+  }, [
+    status,
+    data.length,
+    hasFiltersAndAtLeastOneDocument,
+    isLoading,
+    numRowsInTable,
+    numRowsRead,
+    captureMessage,
+  ]);
+
   return (
     <PanelGroup
       direction="horizontal"
@@ -343,6 +364,20 @@ export function DataContent({
                       numRowsInTable={numRowsInTable}
                     />
                   </Sheet>
+                ) : isEmptySearchFilter(filters) ? (
+                  <div className="flex h-full flex-1 flex-col items-center gap-2 rounded-t-none border bg-background-secondary pt-8">
+                    <div className="text-content-secondary">
+                      Enter a search term to find matching documents.
+                    </div>
+                    <Button
+                      onClick={() =>
+                        applyFiltersWithHistory(clearFilters(filters))
+                      }
+                      size="xs"
+                    >
+                      Clear filters
+                    </Button>
+                  </div>
                 ) : (
                   <div className="flex h-full flex-1 flex-col items-center gap-2 rounded-t-none border bg-background-secondary pt-8">
                     <div className="text-content-secondary">
@@ -350,25 +385,7 @@ export function DataContent({
                     </div>
                     <Button
                       onClick={() =>
-                        applyFiltersWithHistory({
-                          clauses: [],
-                          index: {
-                            name: filters?.index?.name || "_creationTime",
-                            clauses: (filters?.index?.clauses.map((clause) => ({
-                              ...clause,
-                              enabled: false,
-                            })) as
-                              | FilterByIndex[]
-                              | [...FilterByIndex[], FilterByIndexRange]) || [
-                              {
-                                enabled: false,
-                                lowerOp: "lte",
-                                lowerValue: new Date().getTime(),
-                              },
-                            ],
-                          },
-                          order: filters?.order,
-                        })
+                        applyFiltersWithHistory(clearFilters(filters))
                       }
                       size="xs"
                     >
@@ -377,14 +394,8 @@ export function DataContent({
                   </div>
                 )
               ) : isLoading ||
-                (numRowsInTable !== undefined && numRowsInTable > 0) ? (
-                <UnexpectedLoadingState
-                  status={status}
-                  numRowsInTable={numRowsInTable}
-                  numRowsRead={numRowsRead}
-                  isLoading={isLoading}
-                />
-              ) : (
+                (numRowsInTable !== undefined &&
+                  numRowsInTable > 0) ? null /* Loading */ : (
                 <EmptyDataContent
                   openAddDocuments={() =>
                     popupState.setPopup({ type: "addDocuments", tableName })
@@ -436,25 +447,10 @@ export function DataContentSkeleton() {
   );
 }
 
-function UnexpectedLoadingState({
-  status,
-  numRowsInTable,
-  numRowsRead,
-  isLoading,
-}: {
-  status: string;
-  numRowsInTable: number | undefined;
-  numRowsRead: number;
-  isLoading: boolean;
-}) {
-  const { captureMessage } = useContext(DeploymentInfoContext);
-
-  useMount(() => {
-    !isLoading &&
-      captureMessage(
-        `Encountered unexpected state in data page: status: ${status}, numRowsInTable: ${numRowsInTable}, numRowsRead: ${numRowsRead}, isLoading: ${isLoading}`,
-      );
-  });
-
-  return null;
+function isEmptySearchFilter(filters: FilterExpression | undefined) {
+  return (
+    filters?.index &&
+    "search" in filters.index &&
+    filters.index.search.trim() === ""
+  );
 }

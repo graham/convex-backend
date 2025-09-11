@@ -3,10 +3,13 @@ use std::collections::BTreeMap;
 use convex_fivetran_common::fivetran_sdk::{
     selection::Selection as FivetranSelection,
     SchemaSelection as FivetranSchemaSelection,
+    Selection as FivetranRootSelection,
     TableSelection as FivetranTableSelection,
     TablesWithSchema as FivetranSelectionWithSchema,
 };
 use maplit::btreemap;
+#[cfg(test)]
+use proptest::prelude::*;
 use serde::{
     Deserialize,
     Serialize,
@@ -18,10 +21,15 @@ use super::SelectionArg;
 ///
 /// This is the serializable version of `StreamingExportSelection` in the
 /// database crate.
-#[derive(Serialize, Deserialize)]
-#[cfg_attr(test, derive(Eq, PartialEq, Debug, Clone, proptest_derive::Arbitrary))]
+#[derive(Serialize, Deserialize, Clone)]
+#[cfg_attr(test, derive(Eq, PartialEq, Debug, proptest_derive::Arbitrary))]
 pub struct Selection {
     #[serde(flatten)]
+    #[cfg_attr(
+        test,
+        proptest(strategy = "prop::collection::btree_map(any::<String>(), \
+                             any::<ComponentSelection>(), 0..3)")
+    )]
     pub components: BTreeMap<
         String, // The component name ("" for the default component)
         ComponentSelection,
@@ -51,14 +59,19 @@ impl Default for Selection {
 }
 
 /// Serializable version of `StreamingExportComponentSelection`.
-#[derive(Serialize, Deserialize)]
-#[cfg_attr(test, derive(Clone, Eq, PartialEq, Debug, proptest_derive::Arbitrary))]
+#[derive(Serialize, Deserialize, Clone)]
+#[cfg_attr(test, derive(Eq, PartialEq, Debug, proptest_derive::Arbitrary))]
 pub enum ComponentSelection {
     #[serde(rename = "excl")]
     Excluded,
     #[serde(untagged)]
     Included {
         #[serde(flatten)]
+        #[cfg_attr(
+            test,
+            proptest(strategy = "prop::collection::btree_map(any::<String>(), \
+                                 any::<TableSelection>(), 0..3)")
+        )]
         tables: BTreeMap<String, TableSelection>,
         #[serde(rename = "_other")]
         other_tables: InclusionDefault,
@@ -67,14 +80,19 @@ pub enum ComponentSelection {
 
 /// Serializable version of
 /// `StreamingExportTableSelection` + `StreamingExportColumnSelection`
-#[derive(Serialize, Deserialize)]
-#[cfg_attr(test, derive(Clone, Eq, PartialEq, Debug, proptest_derive::Arbitrary))]
+#[derive(Serialize, Deserialize, Clone)]
+#[cfg_attr(test, derive(Eq, PartialEq, Debug, proptest_derive::Arbitrary))]
 pub enum TableSelection {
     #[serde(rename = "excl")]
     Excluded,
     #[serde(untagged)]
     Included {
         #[serde(flatten)]
+        #[cfg_attr(
+            test,
+            proptest(strategy = "prop::collection::btree_map(any::<String>(), \
+                                 any::<ColumnInclusion>(), 0..3)")
+        )]
         columns: BTreeMap<String, ColumnInclusion>,
         #[serde(rename = "_other")]
         other_columns: InclusionDefault,
@@ -139,6 +157,14 @@ impl From<SelectionArg> for Selection {
 /// root component (i.e. the “database name” users see for the Convex root
 /// component)
 pub const DEFAULT_FIVETRAN_SCHEMA_NAME: &str = "convex";
+
+impl TryFrom<Option<FivetranRootSelection>> for Selection {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Option<FivetranRootSelection>) -> Result<Self, Self::Error> {
+        Selection::try_from(value.and_then(|val| val.selection))
+    }
+}
 
 impl TryFrom<Option<FivetranSelection>> for Selection {
     type Error = anyhow::Error;
@@ -415,8 +441,9 @@ mod tests_selection_fivetran_conversion {
     use super::*;
 
     #[test]
-    fn test_schema_equals_none_converts_to_everything_included() {
-        let result: Result<Selection, _> = Selection::try_from(None);
+    fn test_none_converts_to_everything_included() {
+        let none: Option<FivetranSelection> = None;
+        let result: Result<Selection, _> = Selection::try_from(none);
         assert_eq!(
             result.unwrap(),
             Selection {

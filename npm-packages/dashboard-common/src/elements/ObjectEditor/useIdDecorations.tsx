@@ -13,10 +13,12 @@ import {
   copyTextToClipboard,
   documentHref,
   getReferencedTableName,
+  getVisibleTableName,
   toast,
 } from "@common/lib/utils";
 import { useNents } from "@common/lib/useNents";
 import { LiteralNode } from "@common/elements/ObjectEditor/ast/types";
+import url from "url";
 
 const MAX_IDS_TO_DECORATE = 100;
 
@@ -124,26 +126,28 @@ function hoverMessageForDoc(
 ) {
   return [
     {
-      value: `Document in ${colorizeHelperText(tableName, prefersDark)}, created ${colorizeHelperText(new Date(doc._creationTime as number).toLocaleString(), prefersDark)}`,
+      value: `Document in ${colorizeHelperText(getVisibleTableName(tableName), prefersDark)}, created ${colorizeHelperText(new Date(doc._creationTime as number).toLocaleString(), prefersDark)}`,
       supportHtml: true,
       isTrusted: true,
     },
     {
-      value: `${createMarkdownLink(
-        "Open in new tab",
-        GO_TO_DOCUMENT_COMMAND,
-        "codicon-link-external",
-        { id, tableName, componentId },
-      )}
-      &nbsp;&nbsp;&nbsp;&nbsp;
-      ${createMarkdownLink(
-        "Copy Document",
-        COPY_DOCUMENT_COMMAND,
-        "codicon-copy",
-        {
-          docString: stringifyValue(doc, true),
-        },
-      )}`,
+      value:
+        (!tableName.startsWith("_")
+          ? `${createMarkdownLink(
+              "Open in new tab",
+              GO_TO_DOCUMENT_COMMAND,
+              "codicon-link-external",
+              { id, tableName, componentId },
+            )}&nbsp;&nbsp;&nbsp;&nbsp;`
+          : "") +
+        createMarkdownLink(
+          "Copy Document",
+          COPY_DOCUMENT_COMMAND,
+          "codicon-copy",
+          {
+            docString: stringifyValue(doc, true),
+          },
+        ),
       supportHtml: true,
       isTrusted: {
         enabledCommands: [GO_TO_DOCUMENT_COMMAND, COPY_DOCUMENT_COMMAND],
@@ -256,7 +260,9 @@ async function provideDecoration({
         doc ? "codicon-link mtk23" : "codicon-warning mtk11",
       ),
       after: {
-        content: showTableNames ? `Id<"${tableName}">` : "Id",
+        content: showTableNames
+          ? `Id<"${getVisibleTableName(tableName)}">`
+          : "Id",
         inlineClassName: cn(doc ? "mtk23" : "mtk11", "mtki"),
         cursorStops: monaco.editor.InjectedTextCursorStops.None,
       },
@@ -288,10 +294,15 @@ function colorizeHelperText(text: string, prefersDark: boolean) {
 const GO_TO_DOCUMENT_COMMAND = "goToDocument";
 const COPY_DOCUMENT_COMMAND = "copyDocument";
 
-export function registerIdCommands(
-  monaco: Parameters<BeforeMount>[0],
-  deploymentsURI: string,
-) {
+export function registerIdCommands({
+  monaco,
+  deploymentsURI,
+  captureMessage,
+}: {
+  monaco: Parameters<BeforeMount>[0];
+  deploymentsURI: string;
+  captureMessage: (message: string) => void;
+}) {
   monaco.editor.registerCommand(
     GO_TO_DOCUMENT_COMMAND,
     (
@@ -302,10 +313,14 @@ export function registerIdCommands(
         componentId: string | null;
       },
     ) => {
-      const href = documentHref(deploymentsURI, args.tableName, args.id);
-      const query = `${href.query.component ? `component=${href.query.component}&` : ""}table=${href.query.table}&filters=${href.query.filters}`;
-      const url = `${deploymentsURI}/data?${query}`;
-      window.open(`${window.location.origin}${url}`, "_blank");
+      const href = documentHref({
+        deploymentsURI,
+        tableName: args.tableName,
+        id: args.id,
+        componentId: args.componentId,
+        captureMessage,
+      });
+      window.open(url.format(href), "_blank");
     },
   );
 

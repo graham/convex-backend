@@ -1,7 +1,7 @@
 import { useRouter } from "next/router";
-import { useTeams } from "api/teams";
-import { useDefaultDevDeployment, useDeployments } from "api/deployments";
+import { useCurrentTeam } from "api/teams";
 import { PROVISION_PROD_PAGE_NAME } from "@common/lib/deploymentContext";
+import { useProjects } from "api/projects";
 
 export function useDeploymentUris(
   projectId: number,
@@ -11,27 +11,27 @@ export function useDeploymentUris(
   const router = useRouter();
   const subroute =
     router.route.split("/t/[team]/[project]/[deploymentName]")[1] || "/";
-  const { selectedTeamSlug } = useTeams();
+  const team = useCurrentTeam();
+  const selectedTeamSlug = team?.slug;
 
-  const { deployments } = useDeployments(projectId);
+  // Instead of calling useProjectById, call useProjects because the data for that project is pre-fetched in SSR.
+  const project = useProjects(team?.id)?.find((p) => p.id === projectId);
+  const prodDeploymentName = project?.prodDeploymentName;
+  const devDeploymentName = project?.devDeploymentName;
 
   const projectURI = `/t/${teamSlug || selectedTeamSlug}/${projectSlug}`;
 
-  const prodDeployment =
-    deployments &&
-    deployments.find((deployment) => deployment.deploymentType === "prod");
-  const prodHref = prodDeployment
-    ? `${projectURI}/${prodDeployment.name}${subroute}`
+  const prodHref = prodDeploymentName
+    ? `${projectURI}/${prodDeploymentName}${subroute}`
     : `${projectURI}/${PROVISION_PROD_PAGE_NAME}`;
-  const devDeployment = useDefaultDevDeployment(projectId);
-  const devHref = devDeployment
-    ? `${projectURI}/${devDeployment.name}${subroute}`
+  const devHref = devDeploymentName
+    ? `${projectURI}/${devDeploymentName}${subroute}`
     : undefined;
 
-  const isProdDefault = !devDeployment;
+  const isProdDefault = !devDeploymentName;
 
   return {
-    isLoading: !deployments,
+    isLoading: !project,
     isProdDefault,
     prodHref,
     devHref,

@@ -10,13 +10,14 @@ import { DeploymentInfoContext } from "@common/lib/deploymentContext";
 export function useIdReferenceLink(value: Value, columnName: string) {
   const stringValue = typeof value === "string" ? value : stringifyValue(value);
 
+  const componentId = useNents().selectedNent?.id ?? null;
   const tableMapping = useQuery(udfs.getTableMapping.default, {
-    componentId: useNents().selectedNent?.id ?? null,
+    componentId,
   });
   const referencedTableName = getReferencedTableName(tableMapping, value);
   const isReference = referencedTableName !== null;
 
-  const { deploymentsURI } = useContext(DeploymentInfoContext);
+  const { deploymentsURI, captureMessage } = useContext(DeploymentInfoContext);
 
   if (columnName === "_id") {
     return undefined;
@@ -24,7 +25,13 @@ export function useIdReferenceLink(value: Value, columnName: string) {
 
   const link =
     isReference && referencedTableName
-      ? documentHref(deploymentsURI, referencedTableName, stringValue)
+      ? documentHref({
+          deploymentsURI,
+          tableName: referencedTableName,
+          id: stringValue,
+          componentId,
+          captureMessage,
+        })
       : undefined;
 
   return link;

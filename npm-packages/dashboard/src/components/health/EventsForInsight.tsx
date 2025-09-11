@@ -543,17 +543,18 @@ function EventOccDocumentId({
   event: FormattedOccEvent;
   componentId: ComponentId | undefined;
 }) {
-  const { deploymentsURI } = useContext(DeploymentInfoContext);
+  const { deploymentsURI, captureMessage } = useContext(DeploymentInfoContext);
   return (
     <div className="flex w-[16rem]">
       {event.occDocumentId && insight.details.occTableName ? (
         <Link
-          href={documentHref(
+          href={documentHref({
             deploymentsURI,
-            insight.details.occTableName,
-            event.occDocumentId,
-            componentId || undefined,
-          )}
+            tableName: insight.details.occTableName,
+            id: event.occDocumentId,
+            componentId: componentId ?? null,
+            captureMessage,
+          })}
           target="_blank"
           className="flex items-center gap-1 text-content-link hover:underline"
         >
