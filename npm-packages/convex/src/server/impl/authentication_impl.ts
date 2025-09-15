@@ -8,5 +8,10 @@ export function setupAuth(requestId: string): Auth {
         requestId,
       });
     },
+    getUserIdentityInsecure: async () => {
+      return await performAsyncSyscall("1.0/getUserIdentityInsecure", {
+        requestId,
+      });
+    },
   };
 }

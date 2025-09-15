@@ -27,6 +27,13 @@ export type AuthTokenFetcher = (args: {
 }) => Promise<string | null | undefined>;
 
 /**
+ * A function which is called to fetch a plaintext authentication token.
+ *
+ * @public
+ */
+export type PlaintextAuthTokenFetcher = () => Promise<string | null | undefined>;
+
+/**
  * What is provided to the client.
  */
 type AuthConfig = {
@@ -102,7 +109,7 @@ export class AuthenticationManager {
   constructor(
     syncState: LocalSyncState,
     callbacks: {
-      authenticate: (token: string) => IdentityVersion;
+      authenticate: (token: string, mode?: "jwt" | "plaintext") => IdentityVersion;
       stopSocket: () => Promise<void>;
       tryRestartSocket: () => void;
       pauseSocket: () => void;
@@ -154,6 +161,34 @@ export class AuthenticationManager {
       await this.refetchToken();
     }
     this._logVerbose("resuming WS after auth token fetch");
+    this.resumeSocket();
+  }
+
+  async setConfigInsecure(
+    fetchToken: PlaintextAuthTokenFetcher,
+    onChange: (isAuthenticated: boolean) => void,
+  ) {
+    this.resetAuthState();
+    this._logVerbose("pausing WS for plaintext auth token fetch");
+    this.pauseSocket();
+
+    // For plaintext tokens, we fetch immediately without the complex retry logic
+    const token = await fetchToken();
+    if (token) {
+      this.setAuthState({
+        state: "waitingForServerConfirmationOfCachedToken",
+        config: { fetchToken: () => Promise.resolve(token), onAuthChange: onChange },
+        hasRetried: false,
+      });
+      this.authenticate(token, "plaintext");
+    } else {
+      this.setAuthState({
+        state: "noAuth",
+      });
+      onChange(false);
+    }
+
+    this._logVerbose("resuming WS after plaintext auth token fetch");
     this.resumeSocket();
   }
 

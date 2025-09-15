@@ -165,4 +165,17 @@ export interface Auth {
    * + `throw` on HTTP Actions.
    */
   getUserIdentity(): Promise<UserIdentity | null>;
+
+  /**
+   * Get the plaintext token for PlaintextUser identities.
+   *
+   * **WARNING:** This method is marked as "insecure" because it returns
+   * raw, unvalidated token data. Only use this for debugging or development
+   * purposes where you need access to the raw plaintext token.
+   *
+   * @returns A promise that resolves to:
+   * + the plaintext token string if the current identity is a PlaintextUser
+   * + `null` for all other identity types (including regular User identities)
+   */
+  getUserIdentityInsecure(): Promise<string | null>;
 }

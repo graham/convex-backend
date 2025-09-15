@@ -38,6 +38,8 @@ pub enum InertIdentity {
     User(UserIdentifier),
     MemberActingUser(MemberId, UserIdentifier),
     TeamActingUser(TeamId, UserIdentifier),
+    /// Plaintext user (for development/debugging only)
+    PlaintextUser(String),
 }
 
 pub const IDENTITY_LABEL: &str = "identity";
@@ -90,6 +92,8 @@ pub enum IdentityCacheKey {
     /// Unknown.
     Unknown(Option<String>),
     User(UserIdentityAttributes),
+    /// Plaintext user (for development/debugging only)
+    PlaintextUser(String),
 }
 
 impl HeapSize for IdentityCacheKey {
@@ -99,6 +103,7 @@ impl HeapSize for IdentityCacheKey {
             IdentityCacheKey::System => 0,
             IdentityCacheKey::Unknown(s) => s.heap_size(),
             IdentityCacheKey::User(u) => u.heap_size(),
+            IdentityCacheKey::PlaintextUser(s) => s.heap_size(),
         }
     }
 }

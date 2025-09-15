@@ -144,6 +144,8 @@ pub enum Identity {
     // ActingUser keeps track of the ID of the admin acting as a user,
     // and that user's fake attributes
     ActingUser(AdminIdentity, UserIdentityAttributes),
+    // PlaintextUser represents a plaintext token (for development/debugging only)
+    PlaintextUser(String),
     // Unknown(None) means no identity was provided.
     // Unknown(Some(error_message)) means an error occurred while parsing the identity.
     // We allow the request to go through, but keep the error to throw when code tries to
@@ -159,6 +161,7 @@ impl From<Identity> for AuthenticationToken {
                 AuthenticationToken::Admin(identity.key, Some(user))
             },
             Identity::InstanceAdmin(identity) => AuthenticationToken::Admin(identity.key, None),
+            Identity::PlaintextUser(token) => AuthenticationToken::PlaintextUser(token),
             _ => AuthenticationToken::None,
         }
     }
@@ -180,6 +183,7 @@ impl From<Identity> for pb::convex_identity::UncheckedIdentity {
                     attributes: Some(attributes.into()),
                 })
             },
+            Identity::PlaintextUser(token) => UncheckedIdentityProto::PlaintextUser(token),
             Identity::Unknown(error_message) => UncheckedIdentityProto::Unknown(UnknownIdentity {
                 error_message: error_message.map(|e| e.into()),
             }),
@@ -216,6 +220,7 @@ impl Identity {
                     attributes.ok_or_else(|| anyhow::anyhow!("Missing user attributes"))?;
                 Ok(Identity::ActingUser(admin_identity, attributes.try_into()?))
             },
+            UncheckedIdentityProto::PlaintextUser(token) => Ok(Identity::PlaintextUser(token)),
             UncheckedIdentityProto::Unknown(UnknownIdentity { error_message }) => Ok(
                 Identity::Unknown(error_message.map(|e| e.try_into()).transpose()?),
             ),
@@ -261,6 +266,7 @@ impl From<Identity> for InertIdentity {
                     InertIdentity::TeamActingUser(team_id, user.token_identifier)
                 },
             },
+            Identity::PlaintextUser(token) => InertIdentity::PlaintextUser(token),
         }
     }
 }
@@ -273,6 +279,7 @@ impl PartialEq for Identity {
             (Self::User(l), Self::User(r)) => {
                 l.attributes.token_identifier == r.attributes.token_identifier
             },
+            (Self::PlaintextUser(l), Self::PlaintextUser(r)) => l == r,
             (Self::Unknown(_), Self::Unknown(_)) => true,
             (
                 Self::ActingUser(l_admin_identity, l_attributes),
@@ -281,6 +288,7 @@ impl PartialEq for Identity {
             (Self::InstanceAdmin(_), _)
             | (Self::System(_), _)
             | (Self::User(_), _)
+            | (Self::PlaintextUser(_), _)
             | (Self::Unknown(_), _)
             | (Self::ActingUser(..), _) => false,
         }
@@ -301,6 +309,7 @@ impl Identity {
             // Identity of the impersonator not relevant for caching. Only the one being
             // impersonated.
             Identity::ActingUser(_identity, user) => IdentityCacheKey::User(user),
+            Identity::PlaintextUser(token) => IdentityCacheKey::PlaintextUser(token),
         }
     }
 

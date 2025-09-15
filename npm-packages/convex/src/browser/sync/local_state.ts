@@ -43,6 +43,10 @@ export class LocalSyncState {
         value: string;
         impersonating?: UserIdentityAttributes | undefined;
       }
+    | {
+        tokenType: "PlaintextUser";
+        value: string;
+      }
     | undefined;
   private readonly outstandingQueriesOlderThanRestart: Set<QueryId>;
   private outstandingAuthOlderThanRestart: boolean;
@@ -220,6 +224,22 @@ export class LocalSyncState {
       type: "Authenticate",
       baseVersion: baseVersion,
       ...auth,
+    };
+  }
+
+  setAuthInsecure(value: string): Authenticate {
+    this.auth = {
+      tokenType: "PlaintextUser",
+      value: value,
+    };
+    const baseVersion = this.identityVersion;
+    if (!this.paused) {
+      this.identityVersion = baseVersion + 1;
+    }
+    return {
+      type: "Authenticate",
+      baseVersion: baseVersion,
+      ...this.auth,
     };
   }
 

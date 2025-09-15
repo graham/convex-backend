@@ -339,6 +339,34 @@ export class ConvexReactClient {
   }
 
   /**
+   * Set the authentication token to be used for subsequent queries and mutations using plaintext tokens.
+   *
+   * **WARNING:** This method is marked as "insecure" because it bypasses JWT validation.
+   * Only use this for debugging or development purposes.
+   *
+   * @param fetchToken - an async function returning a plaintext authentication token
+   * @param onChange - a callback that will be called when the authentication status changes
+   */
+  setAuthInsecure(
+    fetchToken: PlaintextAuthTokenFetcher,
+    onChange?: (isAuthenticated: boolean) => void,
+  ) {
+    if (typeof fetchToken === "string") {
+      throw new Error(
+        "Passing a string to ConvexReactClient.setAuthInsecure is not supported, " +
+          "please pass an async function that returns the authentication token.",
+      );
+    }
+    this.sync.setAuthInsecure(
+      fetchToken,
+      onChange ??
+        (() => {
+          // Do nothing
+        }),
+    );
+  }
+
+  /**
    * Clear the current authentication token if set.
    */
   clearAuth() {
