@@ -384,7 +384,9 @@ impl TryFrom<JsonValue> for ClientMessage {
                         )
                     },
                     AuthenticationTokenJson::User { value } => AuthenticationToken::User(value),
-                    AuthenticationTokenJson::PlaintextUser { value } => AuthenticationToken::PlaintextUser(value),
+                    AuthenticationTokenJson::PlaintextUser { value } => {
+                        AuthenticationToken::PlaintextUser(value)
+                    },
                     AuthenticationTokenJson::None => AuthenticationToken::None,
                 },
             },
