@@ -65,12 +65,9 @@ export function CustomDomains({
       <div>
         Custom domains are{" "}
         <span className="font-semibold">only available on the Pro plan</span>.{" "}
-        <Link
-          href={`/${team?.slug}/settings/billing`}
-          className="text-content-link"
-        >
+        <Link href={`/${team?.slug}/settings/billing`} className="underline">
           Upgrade to get access.
-        </Link>{" "}
+        </Link>
       </div>
     </Callout>
   );
@@ -553,7 +550,7 @@ function DisplayVanityDomain({
               : "HTTP Actions"}
           </span>
         </div>
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex h-full items-center justify-end gap-2">
           <Button
             tip={
               !enabled
